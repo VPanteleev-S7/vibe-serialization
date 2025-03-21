@@ -368,11 +368,13 @@ private template serializeValueImpl(Serializer, alias Policy) {
 		void serializeValue(T, ATTRIBUTES...)(ref Serializer ser, auto ref T value) { serializeValueDeduced!(T, ATTRIBUTES)(ser, value); }
 	}
 
-	private void serializeValueDeduced(T, ATTRIBUTES...)(ref Serializer ser, auto ref T value)
+	private void serializeValueDeduced(T, FIELD_ATTRIBUTES...)(ref Serializer ser, auto ref T value)
 	{
 		import std.typecons : BitFlags, Nullable, Tuple, Typedef, TypedefType, tuple;
 
 		alias TU = Unqual!T;
+
+		alias ATTRIBUTES = AliasSeq!(FIELD_ATTRIBUTES, __traits(getAttributes, T));
 
 		alias Traits = .Traits!(TU, _Policy, ATTRIBUTES);
 
@@ -713,9 +715,11 @@ private template deserializeValueImpl(Serializer, alias Policy) {
 		return () @trusted { return cast(T)ret.move; } ();
 	}
 
-	T deserializeValueDeduced(T, ATTRIBUTES...)(ref Serializer ser) if(isMutable!T)
+	T deserializeValueDeduced(T, FIELD_ATTRIBUTES...)(ref Serializer ser) if(isMutable!T)
 	{
 		import std.typecons : BitFlags, Nullable, Typedef, TypedefType, Tuple;
+
+		alias ATTRIBUTES = AliasSeq!(FIELD_ATTRIBUTES, __traits(getAttributes, T));
 
 		alias Traits = .Traits!(T, _Policy, ATTRIBUTES);
 
@@ -1398,7 +1402,8 @@ private template hasAttribute(T, alias decl) {
 		enum match(alias ovl) = findFirstUDA!(T, ovl).found;
 		enum hasAttribute = anySatisfy!(match, __traits(getOverloads, __traits(parent, decl), __traits(identifier, decl)));
 	} else {
-		enum hasAttribute = findFirstUDA!(T, decl).found;
+		enum hasAttribute = findFirstUDA!(T, decl).found ||
+			(is(typeof(decl)) && findFirstUDA!(T, typeof(decl)).found);
 	}
 }
 
@@ -2304,6 +2309,22 @@ unittest {
 
 	assertNotThrown(deserializeString("foobar"));
 	assertThrown!ConvException(deserializeString("baz"));
+}
+
+unittest {
+	import std.conv : ConvException;
+	import std.exception : assertThrown, assertNotThrown;
+
+	@byName
+	enum Foo {
+		foobar
+	}
+
+	enum deserialized = Foo.foobar;
+	enum serialized = "V(Aya)(foobar)";
+
+	assert(serialize!TestSerializer(deserialized) == serialized);
+	assert(deserialize!(TestSerializer, Foo)(serialized) == deserialized);
 }
 
 unittest { // bit flag enums
