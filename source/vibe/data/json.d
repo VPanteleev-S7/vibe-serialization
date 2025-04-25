@@ -1859,14 +1859,14 @@ struct JsonSerializer {
 		Json[] m_compositeStack;
 	}
 
-	this(Json data) @safe { m_current = data; }
+	this(Json data) @safe pure nothrow @nogc { m_current = data; }
 
 	@disable this(this);
 
 	//
 	// serialization
 	//
-	Json getSerializedResult() @safe { return m_current; }
+	Json getSerializedResult() @safe pure nothrow @nogc { return m_current; }
 	void beginWriteDictionary(Traits)() { m_compositeStack ~= Json.emptyObject; }
 	void endWriteDictionary(Traits)() { m_current = m_compositeStack[$-1]; m_compositeStack.length--; }
 	void beginWriteDictionaryEntry(Traits)(string name) {}
