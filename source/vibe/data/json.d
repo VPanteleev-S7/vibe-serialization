@@ -2629,6 +2629,7 @@ private string jsonUnescape(R)(ref R range)
 			return str;
 
 		auto ret = appender!string;
+		ret.reserve(str.length + range.length);
 		ret.put(str);
 	} else {
 		auto ret = appender!string;
